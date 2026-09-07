@@ -1,2 +1,4 @@
 apiserver.local.config
 config.json
+testdata
+bin

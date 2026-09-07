@@ -40,7 +40,7 @@ type dnsControlRequest struct {
 }
 
 func Create(ctx context.Context, domain *cfg.Domain, typ dns.Type, name, value string) error {
-	return send(ctx, domain, dnsControlRequest{
+	_, err := send(ctx, domain, dnsControlRequest{
 		Domain:         domain.Domain, // see #3
 		Type:           typ.String(),
 		Name:           name,
@@ -50,10 +50,11 @@ func Create(ctx context.Context, domain *cfg.Domain, typ dns.Type, name, value s
 		JSON:           "yes",
 		Action:         ActionAdd,
 	})
+	return err
 }
 
 func Delete(ctx context.Context, domain *cfg.Domain, typ dns.Type, name, value string) error {
-	return send(ctx, domain, dnsControlRequest{
+	_, err := send(ctx, domain, dnsControlRequest{
 		Domain:         domain.Domain,
 		Type:           typ.String(),
 		Name:           name,
@@ -63,12 +64,48 @@ func Delete(ctx context.Context, domain *cfg.Domain, typ dns.Type, name, value s
 		JSON:           "yes",
 		Action:         ActionDelete,
 	})
+	return err
 }
 
-func send(ctx context.Context, domain *cfg.Domain, payload dnsControlRequest) error {
+// Record is a single DNS record as returned by DirectAdmin's DNS listing.
+type Record struct {
+	Type  string `json:"type"`
+	Name  string `json:"name"`
+	Value string `json:"value"`
+	TTL   string `json:"ttl"`
+}
+
+type listRequest struct {
+	Domain string `json:"domain"`
+	JSON   string `json:"json"`
+}
+
+type listResponse struct {
+	Records []Record `json:"records"`
+}
+
+// List returns all DNS records currently configured for domain.
+func List(ctx context.Context, domain *cfg.Domain) ([]Record, error) {
+	body, err := send(ctx, domain, listRequest{
+		Domain: domain.Domain,
+		JSON:   "yes",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	var resp listResponse
+	if err := json.Unmarshal(body, &resp); err != nil {
+		return nil, fmt.Errorf("failed to parse records response: %v", err)
+	}
+
+	return resp.Records, nil
+}
+
+func send(ctx context.Context, domain *cfg.Domain, payload any) ([]byte, error) {
 	uri, err := url.Parse(domain.Host)
 	if err != nil {
-		return fmt.Errorf("failed to parse url: %v", err)
+		return nil, fmt.Errorf("failed to parse url: %v", err)
 	}
 
 	uri = uri.JoinPath(CMDDNSControl)
@@ -79,12 +116,12 @@ func send(ctx context.Context, domain *cfg.Domain, payload dnsControlRequest) er
 
 	body, err := json.Marshal(payload)
 	if err != nil {
-		return fmt.Errorf("failed to marshal body: %v", err)
+		return nil, fmt.Errorf("failed to marshal body: %v", err)
 	}
 
-	req, err := http.NewRequest(http.MethodPost, uri.String(), bytes.NewReader(body))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, uri.String(), bytes.NewReader(body))
 	if err != nil {
-		return fmt.Errorf("failed to construct req: %v", err)
+		return nil, fmt.Errorf("failed to construct req: %v", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.SetBasicAuth(domain.Username, domain.Password)
@@ -95,14 +132,18 @@ func send(ctx context.Context, domain *cfg.Domain, payload dnsControlRequest) er
 
 	res, err := client.Do(req)
 	if err != nil {
-		return fmt.Errorf("failed to perform http request: %v", err)
+		return nil, fmt.Errorf("failed to perform http request: %v", err)
 	}
 	defer res.Body.Close()
 
-	if res.StatusCode != http.StatusOK {
-		respBody, _ := io.ReadAll(res.Body)
-		return fmt.Errorf("got unexpected status code: %d, body: %s", res.StatusCode, respBody)
+	respBody, err := io.ReadAll(res.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response body: %v", err)
 	}
 
-	return nil
+	if res.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("got unexpected status code: %d, body: %s", res.StatusCode, respBody)
+	}
+
+	return respBody, nil
 }

@@ -1,0 +1,10 @@
+{
+  "domains": [
+    {
+      "domain": "example.com",
+      "host": "https://your-directadmin-host:2222",
+      "password": "your-directadmin-password",
+      "username": "your-directadmin-username"
+    }
+  ]
+}

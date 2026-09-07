@@ -1,0 +1,5 @@
+apiVersion: v2
+appVersion: "1.0"
+description: cert-manager ACME DNS01 webhook for DirectAdmin (Nordhost)
+name: nordhost-webhook
+version: 0.1.0

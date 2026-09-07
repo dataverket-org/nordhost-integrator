@@ -1,0 +1,26 @@
+# Merge this into your values for the upstream external-dns chart
+# (https://kubernetes-sigs.github.io/external-dns/). See README.md.
+#
+# --source (which resources ExternalDNS watches - ingress, service, etc.)
+# is independent of this and should still be set as you normally would.
+
+provider:
+  name: webhook
+  webhook:
+    image:
+      repository: CHANGE_ME/nordhost-externaldns-webhook
+      tag: latest
+    env:
+      - name: CONFIG
+        value: /etc/nordhost/config.json
+    extraVolumeMounts:
+      - name: nordhost-config
+        mountPath: /etc/nordhost
+        readOnly: true
+
+# Pod-level volume backing the mount above - the credentials Secret created
+# per README.md step 1.
+extraVolumes:
+  - name: nordhost-config
+    secret:
+      secretName: nordhost-externaldns-webhook-config
