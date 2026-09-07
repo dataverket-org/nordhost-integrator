@@ -4,8 +4,11 @@ ARCH ?= $(shell $(GO) env GOARCH)
 
 # Must be absolute: `go test ./...` runs each package with that package's
 # own directory as CWD, so a relative path only resolves correctly for the
-# root package's tests.
-CONFIG ?= $(shell pwd)/config.json
+# root package's tests. Computed separately from any $CONFIG already in the
+# environment (e.g. a shell profile export used for running cmd/main
+# directly), since that's commonly set to a relative path and Make's `?=`
+# won't override an inherited env var.
+TEST_CONFIG ?= $(shell pwd)/config.json
 
 ## Location to install dependencies to
 LOCALBIN ?= $(shell pwd)/bin
@@ -27,7 +30,7 @@ test: setup-envtest
 	TEST_ASSET_ETCD=$(LOCALBIN)/k8s/$(ENVTEST_K8S_VERSION)-$(OS)-$(ARCH)/etcd \
 	TEST_ASSET_KUBE_APISERVER=$(LOCALBIN)/k8s/$(ENVTEST_K8S_VERSION)-$(OS)-$(ARCH)/kube-apiserver \
 	TEST_ASSET_KUBECTL=$(LOCALBIN)/k8s/$(ENVTEST_K8S_VERSION)-$(OS)-$(ARCH)/kubectl \
-	CONFIG=$(CONFIG) \
+	CONFIG=$(TEST_CONFIG) \
 	$(GO) test -v ./...
 
 .PHONY: clean
