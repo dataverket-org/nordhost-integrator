@@ -9,7 +9,9 @@ certManager:
   serviceAccountName: cert-manager
 
 image:
-  repository: ""
+  # docker.io/eskpil/nordhost-webhook is a temporary public image pushed for
+  # early testing - swap this once there's a permanent home for it.
+  repository: docker.io/eskpil/nordhost-webhook
   tag: latest
   pullPolicy: IfNotPresent
 
@@ -21,7 +23,7 @@ replicaCount: 1
 #   kubectl create secret generic nordhost-webhook-config \
 #     --from-file=config.json=./config.json -n cert-manager
 # Required - the chart will fail to render without it.
-existingSecretName: ""
+existingSecretName: "1234"
 
 nameOverride: ""
 fullnameOverride: ""

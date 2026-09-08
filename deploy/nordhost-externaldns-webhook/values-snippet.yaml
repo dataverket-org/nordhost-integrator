@@ -8,7 +8,9 @@ provider:
   name: webhook
   webhook:
     image:
-      repository: CHANGE_ME/nordhost-externaldns-webhook
+      # Temporary public image pushed for early testing - swap this once
+      # there's a permanent home for it.
+      repository: docker.io/eskpil/nordhost-externaldns-webhook
       tag: latest
     env:
       - name: CONFIG

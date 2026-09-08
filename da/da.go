@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 
 	"git.dataverket.org/tools/nordhost-integrator/cfg"
 	"github.com/miekg/dns"
@@ -24,8 +25,13 @@ type (
 const (
 	CMDDNSControl CMD = "CMD_DNS_CONTROL"
 
-	ActionAdd    Action = "add"
-	ActionDelete Action = "delete"
+	ActionAdd Action = "add"
+
+	// DirectAdmin's DNS delete uses "select" (checkbox-selection semantics
+	// from its legacy API), not "delete" - see Delete below. Confirmed
+	// empirically: "delete"/"del"/"remove"/etc. are all silently ignored
+	// and fall back to a list response; only "select" is recognized.
+	ActionSelect Action = "select"
 )
 
 type dnsControlRequest struct {
@@ -53,16 +59,21 @@ func Create(ctx context.Context, domain *cfg.Domain, typ dns.Type, name, value s
 	return err
 }
 
+// Delete removes a DNS record. DirectAdmin identifies which record to
+// remove via a type-specific indexed field (e.g. "txtrecs0" for TXT,
+// "arecs0" for A) whose value is the same "name=<name>&value=<value>"
+// string List reports back as each record's "combined" field - not by
+// separate name/value fields the way Create's "add" action works.
 func Delete(ctx context.Context, domain *cfg.Domain, typ dns.Type, name, value string) error {
-	_, err := send(ctx, domain, dnsControlRequest{
-		Domain:         domain.Domain,
-		Type:           typ.String(),
-		Name:           name,
-		Value:          value,
-		TTL:            "1800",
-		AffectPointers: "no",
-		JSON:           "yes",
-		Action:         ActionDelete,
+	typeStr := typ.String()
+	recsKey := strings.ToLower(typeStr) + "recs0"
+
+	_, err := send(ctx, domain, map[string]any{
+		"domain": domain.Domain,
+		"json":   "yes",
+		"action": ActionSelect,
+		"type":   typeStr,
+		recsKey:  fmt.Sprintf("name=%s&value=%s", name, value),
 	})
 	return err
 }

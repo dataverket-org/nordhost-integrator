@@ -3,9 +3,11 @@ package extdns
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"git.dataverket.org/tools/nordhost-integrator/cfg"
@@ -42,10 +44,18 @@ func fakeDirectAdmin(t *testing.T, records *[]map[string]string) *httptest.Serve
 				"value": req["value"].(string),
 				"ttl":   "1800",
 			})
-		case "delete":
+		case "select":
+			// Real DirectAdmin identifies the record via a type-specific
+			// indexed field (e.g. "txtrecs0") whose value is
+			// "name=X&value=Y" - not plain name/value fields. See da.Delete.
+			typeStr, _ := req["type"].(string)
+			recsKey := strings.ToLower(typeStr) + "recs0"
+			combined, _ := req[recsKey].(string)
+
 			out := (*records)[:0]
 			for _, rec := range *records {
-				if rec["name"] == req["name"] && rec["value"] == req["value"] && rec["type"] == req["type"] {
+				recCombined := fmt.Sprintf("name=%s&value=%s", rec["name"], rec["value"])
+				if rec["type"] == typeStr && recCombined == combined {
 					continue
 				}
 				out = append(out, rec)
