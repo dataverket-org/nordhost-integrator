@@ -8,9 +8,7 @@ provider:
   name: webhook
   webhook:
     image:
-      # Temporary public image pushed for early testing - swap this once
-      # there's a permanent home for it.
-      repository: docker.io/eskpil/nordhost-externaldns-webhook
+      repository: git.dataverket.org/dataverket/tools/nordhost-integrator-externaldns
       tag: latest
     env:
       - name: CONFIG

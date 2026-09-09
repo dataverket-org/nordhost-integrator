@@ -34,8 +34,7 @@ sidecar and points ExternalDNS's core container at it - no manual
 ```sh
 helm upgrade --install external-dns external-dns/external-dns \
   -n external-dns \
-  -f values-snippet.yaml \
-  --set image.repository=<your registry>/nordhost-externaldns-webhook
+  -f values-snippet.yaml
 ```
 
 ## Notes

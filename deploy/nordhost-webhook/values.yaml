@@ -9,9 +9,7 @@ certManager:
   serviceAccountName: cert-manager
 
 image:
-  # docker.io/eskpil/nordhost-webhook is a temporary public image pushed for
-  # early testing - swap this once there's a permanent home for it.
-  repository: docker.io/eskpil/nordhost-webhook
+  repository: git.dataverket.org/dataverket/tools/nordhost-integrator
   tag: latest
   pullPolicy: IfNotPresent
 
