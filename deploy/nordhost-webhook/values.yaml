@@ -9,7 +9,7 @@ certManager:
   serviceAccountName: cert-manager
 
 image:
-  repository: git.dataverket.org/dataverket/tools/nordhost-integrator
+  repository: registry.dataverket.org/tools/nordhost-integrator
   tag: latest
   pullPolicy: IfNotPresent
 

@@ -8,7 +8,7 @@ provider:
   name: webhook
   webhook:
     image:
-      repository: git.dataverket.org/dataverket/tools/nordhost-integrator-externaldns
+      repository: registry.dataverket.org/tools/nordhost-integrator-externaldns
       tag: latest
     env:
       - name: CONFIG
