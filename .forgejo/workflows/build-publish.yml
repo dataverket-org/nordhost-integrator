@@ -46,21 +46,26 @@ jobs:
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 
-      - uses: docker/setup-buildx-action@v3
+      # Plain docker CLI against the runner's docker-in-docker: the docker/*
+      # marketplace actions are not mirrored on this forge (only its `actions`
+      # org is), so `uses: docker/...` fails to resolve.
+      - name: Log in to registry
+        env:
+          REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
+          REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
+        run: echo "$REGISTRY_PASSWORD" | docker login "$REGISTRY" -u "$REGISTRY_USERNAME" --password-stdin
 
-      - uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ secrets.REGISTRY_USERNAME }}
-          password: ${{ secrets.REGISTRY_PASSWORD }}
-
-      - uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: ${{ matrix.dockerfile }}
-          platforms: linux/amd64
-          push: true
-          tags: ${{ steps.tags.outputs.tags }}
+      - name: Build and push
+        run: |
+          set -euo pipefail
+          ARGS=()
+          while IFS= read -r tag; do
+            [ -n "$tag" ] && ARGS+=(-t "$tag")
+          done <<< "${{ steps.tags.outputs.tags }}"
+          docker build --platform linux/amd64 -f "${{ matrix.dockerfile }}" "${ARGS[@]}" .
+          while IFS= read -r tag; do
+            [ -n "$tag" ] && docker push "$tag"
+          done <<< "${{ steps.tags.outputs.tags }}"
 
   chart:
     if: startsWith(github.ref, 'refs/tags/')
@@ -70,7 +75,13 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install Helm
-        run: curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+        run: |
+          set -euo pipefail
+          HELM_VERSION=v3.16.4
+          curl -sfL -o /tmp/helm.tgz "https://get.helm.sh/helm-${HELM_VERSION}-linux-amd64.tar.gz"
+          curl -sfL "https://get.helm.sh/helm-${HELM_VERSION}-linux-amd64.tar.gz.sha256sum" | sed 's|helm-.*|/tmp/helm.tgz|' | sha256sum -c -
+          tar -xzf /tmp/helm.tgz -C /tmp
+          install /tmp/linux-amd64/helm /usr/local/bin/helm
 
       # Chart version/appVersion track the release tag directly rather than
       # being hand-maintained in Chart.yaml.
