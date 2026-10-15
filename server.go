@@ -25,7 +25,6 @@ type Server struct {
 func New(config *cfg.Config) (*Server, error) {
 	s := new(Server)
 	s.c = config
-
 	return s, nil
 }
 
