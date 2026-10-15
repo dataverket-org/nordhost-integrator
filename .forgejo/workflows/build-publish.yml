@@ -19,53 +19,44 @@ jobs:
       matrix:
         include:
           - image: nordhost-integrator
-            dockerfile: Dockerfile
+            package: ./cmd/main
           - image: nordhost-integrator-externaldns
-            dockerfile: Dockerfile.externaldns-webhook
+            package: ./cmd/externaldns-webhook
     steps:
       - uses: actions/checkout@v4
 
-      # Every push publishes a :sha-<short> tag; a push to main also moves
-      # :latest; a vX.Y.Z tag additionally publishes the bare X.Y.Z version.
-      - name: Compute image tags
-        id: tags
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      # ko builds the Go binary and pushes the image straight to the registry
+      # with no docker daemon: the runner's job containers get no docker socket,
+      # and the docker/* marketplace actions are not mirrored on this forge.
+      - name: Install ko
         run: |
           set -euo pipefail
-          IMAGE="$REGISTRY/$IMAGE_NAMESPACE/${{ matrix.image }}"
-          TAGS="$IMAGE:sha-$(git rev-parse --short HEAD)"
-          if [ "$GITHUB_REF_TYPE" = "branch" ]; then
-            TAGS="$TAGS
-          $IMAGE:latest"
-          elif [ "$GITHUB_REF_TYPE" = "tag" ]; then
-            TAGS="$TAGS
-          $IMAGE:${GITHUB_REF_NAME#v}"
-          fi
-          {
-            echo "tags<<EOF"
-            echo "$TAGS"
-            echo "EOF"
-          } >> "$GITHUB_OUTPUT"
+          KO_VERSION=0.19.1
+          curl -sfL -o /tmp/ko.tgz "https://github.com/ko-build/ko/releases/download/v${KO_VERSION}/ko_${KO_VERSION}_Linux_x86_64.tar.gz"
+          echo "635ac6ea3fd376c935fee597fbb29ab2c2449f49ef1655085fe3aa9c25fed7a5  /tmp/ko.tgz" | sha256sum -c -
+          tar -xzf /tmp/ko.tgz -C /usr/local/bin ko
 
-      # Plain docker CLI against the runner's docker-in-docker: the docker/*
-      # marketplace actions are not mirrored on this forge (only its `actions`
-      # org is), so `uses: docker/...` fails to resolve.
-      - name: Log in to registry
+      # Every push publishes a :sha-<short> tag; a push to main also moves
+      # :latest; a vX.Y.Z tag additionally publishes the bare X.Y.Z version.
+      - name: Build and push
         env:
           REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
           REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
-        run: echo "$REGISTRY_PASSWORD" | docker login "$REGISTRY" -u "$REGISTRY_USERNAME" --password-stdin
-
-      - name: Build and push
         run: |
           set -euo pipefail
-          ARGS=()
-          while IFS= read -r tag; do
-            [ -n "$tag" ] && ARGS+=(-t "$tag")
-          done <<< "${{ steps.tags.outputs.tags }}"
-          docker build --platform linux/amd64 -f "${{ matrix.dockerfile }}" "${ARGS[@]}" .
-          while IFS= read -r tag; do
-            [ -n "$tag" ] && docker push "$tag"
-          done <<< "${{ steps.tags.outputs.tags }}"
+          TAGS="sha-$(git rev-parse --short HEAD)"
+          if [ "$GITHUB_REF_TYPE" = "branch" ]; then
+            TAGS="$TAGS,latest"
+          elif [ "$GITHUB_REF_TYPE" = "tag" ]; then
+            TAGS="$TAGS,${GITHUB_REF_NAME#v}"
+          fi
+          ko login "$REGISTRY" -u "$REGISTRY_USERNAME" --password-stdin <<< "$REGISTRY_PASSWORD"
+          KO_DOCKER_REPO="$REGISTRY/$IMAGE_NAMESPACE/${{ matrix.image }}" \
+            ko build --bare --platform linux/amd64 --tags "$TAGS" "${{ matrix.package }}"
 
   chart:
     if: startsWith(github.ref, 'refs/tags/')

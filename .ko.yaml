@@ -1,0 +1,10 @@
+# Base images for ko builds (replaces the alpine stage of the Dockerfiles).
+# distroless/static carries CA certificates and tzdata.
+defaultBaseImage: gcr.io/distroless/static:latest
+
+baseImageOverrides:
+  # Runs as root: the webhook binds :443, which needs CAP_NET_BIND_SERVICE
+  # otherwise (same reasoning as the Dockerfile). distroless/static is root.
+  git.dataverket.org/tools/nordhost-integrator/cmd/main: gcr.io/distroless/static:latest
+  # Runs as 65532 (numeric, so runAsNonRoot can be verified statically).
+  git.dataverket.org/tools/nordhost-integrator/cmd/externaldns-webhook: gcr.io/distroless/static:nonroot
