@@ -119,6 +119,11 @@ func send(ctx context.Context, domain *cfg.Domain, payload any) ([]byte, error) 
 		return nil, fmt.Errorf("failed to parse url: %v", err)
 	}
 
+	g := gateFor(uri.Host)
+	if err := g.check(uri.Host); err != nil {
+		return nil, err
+	}
+
 	uri = uri.JoinPath(CMDDNSControl)
 
 	q := url.Values{}
@@ -152,9 +157,15 @@ func send(ctx context.Context, domain *cfg.Domain, payload any) ([]byte, error) 
 		return nil, fmt.Errorf("failed to read response body: %v", err)
 	}
 
+	if res.StatusCode == http.StatusUnauthorized || res.StatusCode == http.StatusForbidden {
+		g.refused(uri.Host, domain.Username, res.StatusCode, respBody)
+		return nil, fmt.Errorf("DirectAdmin refused %s at %s: status %d, body: %s",
+			domain.Username, uri.Host, res.StatusCode, firstLine(respBody))
+	}
 	if res.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("got unexpected status code: %d, body: %s", res.StatusCode, respBody)
 	}
+	g.succeeded(uri.Host)
 
 	return respBody, nil
 }
