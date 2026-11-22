@@ -35,8 +35,8 @@ jobs:
       - name: Install ko
         run: |
           set -euo pipefail
-          KO_VERSION=0.19.1
-          curl -sfL -o /tmp/ko.tgz "https://github.com/ko-build/ko/releases/download/v${KO_VERSION}/ko_${KO_VERSION}_Linux_x86_64.tar.gz"
+          KO_VERSION=v0.19.1
+          curl -sfL -o /tmp/ko.tgz "https://github.com/ko-build/ko/releases/download/${KO_VERSION}/ko_${KO_VERSION#v}_Linux_x86_64.tar.gz"
           echo "635ac6ea3fd376c935fee597fbb29ab2c2449f49ef1655085fe3aa9c25fed7a5  /tmp/ko.tgz" | sha256sum -c -
           tar -xzf /tmp/ko.tgz -C /usr/local/bin ko
 

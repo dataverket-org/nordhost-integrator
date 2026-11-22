@@ -1,0 +1,91 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "description": [
+    "Renovate proposes; a person merges. A release waits seven days; a fix for a known vulnerability in a Go module does not."
+  ],
+  "extends": [
+    "config:recommended"
+  ],
+  "automerge": false,
+  "minimumReleaseAge": "7 days",
+  "osvVulnerabilityAlerts": true,
+  "semanticCommits": "enabled",
+  "semanticCommitScope": "deps",
+  "customManagers": [
+    {
+      "description": "ko in the image workflow: the version, then the SHA-256 of its archive",
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^\\.forgejo/workflows/.+\\.ya?ml$/"
+      ],
+      "matchStrings": [
+        "KO_VERSION=(?<currentValue>v[\\d.]+)\\n[^\\n]+\\n\\s+echo \"(?<currentDigest>[a-f0-9]{64})  /tmp/ko\\.tgz\""
+      ],
+      "depNameTemplate": "ko",
+      "packageNameTemplate": "ko-build/ko",
+      "datasourceTemplate": "github-release-attachments"
+    },
+    {
+      "description": "helm in the chart job; its checksum is fetched beside it at run time",
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^\\.forgejo/workflows/.+\\.ya?ml$/"
+      ],
+      "matchStrings": [
+        "HELM_VERSION=(?<currentValue>v[\\d.]+)"
+      ],
+      "depNameTemplate": "helm",
+      "packageNameTemplate": "helm/helm",
+      "datasourceTemplate": "github-releases"
+    }
+  ],
+  "packageRules": [
+    {
+      "description": "Every update is a chore, whatever kind of dependency it is",
+      "matchPackageNames": [
+        "*"
+      ],
+      "semanticCommitType": "chore"
+    },
+    {
+      "description": "The base image of each Dockerfile, pinned to the digest of its multi-architecture index",
+      "matchManagers": [
+        "dockerfile"
+      ],
+      "pinDigests": true
+    },
+    {
+      "description": "The chart's version and appVersion are written by the release job from the tag",
+      "matchFileNames": [
+        "deploy/**"
+      ],
+      "enabled": false
+    },
+    {
+      "description": "A workflow's actions resolve on this forge's own actions org (DEFAULT_ACTIONS_URL=self), so their versions are read there",
+      "matchManagers": [
+        "github-actions"
+      ],
+      "matchDatasources": [
+        "github-tags"
+      ],
+      "overrideDatasource": "forgejo-tags",
+      "registryUrls": [
+        "https://git.dataverket.org"
+      ]
+    },
+    {
+      "description": "These registries may give no release time, so the seven days cannot always be counted; such an image is proposed at once, and the person merging reads the release date",
+      "matchDatasources": [
+        "docker"
+      ],
+      "matchPackageNames": [
+        "code.forgejo.org/**",
+        "ghcr.io/**",
+        "quay.io/**",
+        "registry.k8s.io/**"
+      ],
+      "minimumReleaseAgeBehaviour": "timestamp-optional"
+    }
+  ]
+}
