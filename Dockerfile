@@ -21,7 +21,7 @@ COPY . .
 
 RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -o webhook -ldflags '-w -extldflags "-static"' ./cmd/main
 
-FROM alpine:3.22
+FROM alpine:3.22@sha256:49340b346798875b5592e5d420241f2f9cfba5f47e62ebb1446a1b34734e898f
 
 # Stays root: the webhook binds to port 443 (--tls-cert-file/--tls-private-key-file),
 # which requires CAP_NET_BIND_SERVICE to bind as non-root - not worth the
