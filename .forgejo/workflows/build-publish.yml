@@ -68,7 +68,7 @@ jobs:
       - name: Install Helm
         run: |
           set -euo pipefail
-          HELM_VERSION=v3.16.4
+          HELM_VERSION=v4.3.2
           curl -sfL -o /tmp/helm.tgz "https://get.helm.sh/helm-${HELM_VERSION}-linux-amd64.tar.gz"
           curl -sfL "https://get.helm.sh/helm-${HELM_VERSION}-linux-amd64.tar.gz.sha256sum" | sed 's|helm-.*|/tmp/helm.tgz|' | sha256sum -c -
           tar -xzf /tmp/helm.tgz -C /tmp
