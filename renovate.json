@@ -9,6 +9,7 @@
   "automerge": false,
   "minimumReleaseAge": "7 days",
   "osvVulnerabilityAlerts": true,
+  "prHourlyLimit": 0,
   "semanticCommits": "enabled",
   "semanticCommitScope": "deps",
   "customManagers": [
